@@ -1,7 +1,5 @@
 import collections
 import functools
-import data_parser as parser
-
 
 class memoized(object):
     """Decorator. Caches a function's return value each time it is called.
@@ -31,21 +29,3 @@ class memoized(object):
     def __get__(self, obj, objtype):
         """Support instance methods."""
         return functools.partial(self.__call__, obj)
-    
-def get_user(user_id):
-    """Get a user from the data.
-
-    Returns:
-        pandas.DataFrame: The user object
-    """
-    users = parser.get_users()
-    return users[users.user_id == user_id]
-
-def get_event(event_id):
-    """Get an event from the data.
-
-    Returns:
-        pandas.DataFrame: The event object
-    """
-    events = parser.get_events()
-    return events[events.event_id == event_id]
