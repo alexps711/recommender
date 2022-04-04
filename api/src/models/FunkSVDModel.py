@@ -1,6 +1,5 @@
 import numpy
 import sys
-from models import Model
 
 class FunkSVDModel():
     """
@@ -11,7 +10,7 @@ class FunkSVDModel():
         self.Q = None
         self.P = None
 
-    def fit(self, user_x_product, latent_features_guess=5, learning_rate=0.0002, steps=5000, regularization_penalty=0.02, convergeance_threshold=0.001):
+    def fit(self, user_x_product, latent_features_guess=5, learning_rate=0.002, steps=500, regularization_penalty=0.02, convergeance_threshold=0.001):
         """
         Trains the predictor with the given parameters.
         :param user_x_product:
@@ -78,12 +77,11 @@ class FunkSVDModel():
 
         # iterate through max # of steps
         for step in range(steps):
-
+            print("step: " + str(step))
             # iterate each cell in r
             for i in range(len(R)):
                 for j in range(len(R[i])):
                     if R[i][j] > 0:
-
                         # get the eij (error) side of the equation
                         eij = R[i][j] - numpy.dot(P[i, :], Q[:, j])
 
@@ -96,6 +94,7 @@ class FunkSVDModel():
 
             # Measure error
             error = self.__error(R, P, Q, K, beta)
+            print("error: " + str(error))
 
             # Terminate when we converge
             if error < error_limit:

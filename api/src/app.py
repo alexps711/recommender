@@ -22,7 +22,7 @@ def create_app():
     app = Flask(__name__)
     cors = CORS(app)
     app.config['CORS_HEADERS'] = 'Content-Type'
-    model = Main(is_svd=True)
+    model = Main()
     matplotlib.use('Agg')
     npx.set_np()
     
@@ -49,16 +49,10 @@ def create_app():
     def get_events():
         user_id = request.args.get('id')
         is_svd = request.args.get('svd') == 'true'
-        if is_svd:
-            event_rating_dict = model.run(int(user_id))
-            evs = events[events['event_id'].isin(event_rating_dict.keys())]
-            evs['rating'] = evs['event_id'].apply(lambda x: event_rating_dict[x])
-            return evs.to_json(orient='records')
-        else:
-            model.is_svd = False
-            event_rating_dict = model.run(user_id=int(user_id))
-            evs = events[events['event_id'].isin(event_rating_dict.keys())]
-            return evs.to_json(orient='records')
+        event_rating_dict = model.run(int(user_id), is_svd)
+        evs = events[events['event_id'].isin(event_rating_dict.keys())]
+        evs['rating'] = evs['event_id'].apply(lambda x: event_rating_dict[x])
+        return evs.to_json(orient='records')
             
     @app.route('/prevevents', methods=['GET'])
     @cross_origin()
