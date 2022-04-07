@@ -1,143 +1,85 @@
-import numpy
-import sys
+import numpy as np
+
 
 class FunkSVDModel():
     """
-    Matrix factorization model to predict user-product ratings.
-    This model is a raw implementation.
+    Based on Simon Funk's implementation at the Netflix Prize of 2006.
+    This model is based on the principles of SVD to compute ratings for events.
     """
+
     def __init__(self):
-        self.Q = None
-        self.P = None
+        self.EVENT_MATRIX = None
+        self.USER_MATRIX = None
+        self.latent_features_guess = 5
+        self.learning_rate = 0.02
+        self.steps = 500
+        self.regularization_penalty = 0.02
 
-    def fit(self, user_x_product, latent_features_guess=5, learning_rate=0.002, steps=500, regularization_penalty=0.02, convergeance_threshold=0.001):
-        """
-        Trains the predictor with the given parameters.
-        :param user_x_product:
-        :param latent_features_guess:
-        :param learning_rate:
-        :param steps:
-        :param regularization_penalty:
-        :param convergeance_threshold:
-        :return:
-        """
-        print('training model...')
-        return self.__forward(user_x_product, latent_features_guess, learning_rate, steps, regularization_penalty, convergeance_threshold)
+    def train(self, user_x_product):
+        print('Training SVD model...')
+        return self.__forward(user_x_product)
 
-    def predict_instance(self, row_index):
-        """
-        Returns all predictions for a given row
-        :param row_index:
-        :return:
-        """
-        return numpy.dot(self.P[row_index, :], self.Q.T)
-
-    def predict_all(self):
-        """
-        Returns the full prediction matrix
-        :return:
-        """
-        return numpy.dot(self.P, self.Q.T)
+    def predict(self, row_index):
+        return np.dot(self.USER_MATRIX[row_index, :], self.EVENT_MATRIX.T)
 
     def get_models(self):
-        """
-        Returns a copy of the models
-        :return:
-        """
-        return self.P, self.Q
+        return self.USER_MATRIX, self.EVENT_MATRIX
 
-    def __forward(self, R, K, alpha, steps, beta, error_limit):
-        """
-        R = user x product matrix
-        K = latent features count (how many features we think the model should derive)
-        alpha = learning rate
-        beta = regularization penalty (minimize over/under fitting)
-        step = logistic regression steps
-        error_limit = algo finishes when error reaches this level
-        Returns:
-        P = User x features matrix. (How strongly a user is associated with a feature)
-        Q = Product x feature matrix. (How strongly a product is associated with a feature)
-        To predict, use dot product of P, Q
-        """
-        # Transform regular array to numpy array
-        R = numpy.array(R)
+    def __forward(self, rating_matrix):
+        rating_matrix = np.array(rating_matrix)
 
-        # Generate P - N x K
-        # Use random values to start. Best performance
-        N = len(R)
-        M = len(R[0])
-        P = numpy.random.rand(N, K)
+        # Build user - latent factors matrix
+        user_rows = len(rating_matrix)
+        USER_MATRIX = np.random.rand(user_rows, self.latent_features_guess)
 
-        # Generate Q - M x K
-        # Use random values to start. Best performance
-        Q = numpy.random.rand(M, K)
-        Q = Q.T
+        # Build events - latent factors matrix
+        event_rows = len(rating_matrix[0])
+        EVENT_MATRIX = np.random.rand(event_rows, self.latent_features_guess).T
 
         error = 0
-
-        # iterate through max # of steps
-        for step in range(steps):
-            print("step: " + str(step))
+        for step in range(self.steps):
+            print("Step: " + str(step))
             # iterate each cell in r
-            for i in range(len(R)):
-                for j in range(len(R[i])):
-                    if R[i][j] > 0:
+            for i in range(user_rows):
+                for j in range(len(rating_matrix[i])):
+                    if rating_matrix[i][j] > 0:
                         # get the eij (error) side of the equation
-                        eij = R[i][j] - numpy.dot(P[i, :], Q[:, j])
+                        eij = rating_matrix[i][j] - \
+                            np.dot(USER_MATRIX[i, :], EVENT_MATRIX[:, j])
 
-                        for k in range(K):
-                            # (*update_rule) update pik_hat
-                            P[i][k] = P[i][k] + alpha * (2 * eij * Q[k][j] - beta * P[i][k])
+                        for k in range(self.latent_features_guess):
+                            USER_MATRIX[i][k] = USER_MATRIX[i][k] + self.learning_rate * \
+                                (2 * eij *
+                                 EVENT_MATRIX[k][j] - self.regularization_penalty * USER_MATRIX[i][k])
 
-                            # (*update_rule) update qkj_hat
-                            Q[k][j] = Q[k][j] + alpha * ( 2 * eij * P[i][k] - beta * Q[k][j] )
+                            EVENT_MATRIX[k][j] = EVENT_MATRIX[k][j] + self.learning_rate * \
+                                (2 * eij *
+                                 USER_MATRIX[i][k] - self.regularization_penalty * EVENT_MATRIX[k][j])
 
             # Measure error
-            error = self.__error(R, P, Q, K, beta)
-            print("error: " + str(error))
+            error = self.__error(rating_matrix, USER_MATRIX, EVENT_MATRIX)
+            print("Error: " + str(error))
 
-            # Terminate when we converge
-            if error < error_limit:
-                break
+        self.EVENT_MATRIX = EVENT_MATRIX.T
+        self.USER_MATRIX = USER_MATRIX
 
-        # track Q, P (learned params)
-        # Q = Products x feature strength
-        # P = Users x feature strength
-        self.Q = Q.T
-        self.P = P
 
-        self.__print_fit_stats(error, N, M)
-
-    def __error(self, R, P, Q, K, beta):
-        """
-        Calculates the error for the function
-        :param R:
-        :param P:
-        :param Q:
-        :param K:
-        :param beta:
-        :return:
-        """
-        e = 0
-        for i in range(len(R)):
-            for j in range(len(R[i])):
-                if R[i][j] > 0:
+    def __error(self, rating_matrix, USER_MATRIX, EVENT_MATRIX):
+        error = 0
+        for i in range(len(rating_matrix)):
+            for j in range(len(rating_matrix[i])):
+                if rating_matrix[i][j] > 0:
 
                     # loss function error sum( (y-y_hat)^2 )
-                    e = e + pow(R[i][j]-numpy.dot(P[i,:],Q[:,j]), 2)
+                    error = error + \
+                        pow(rating_matrix[i][j]-np.dot(USER_MATRIX[i, :],
+                                              EVENT_MATRIX[:, j]), 2)
 
                     # add regularization
-                    for k in range(K):
-
+                    for latent_feature in range(self.latent_features_guess):
                         # error + ||P||^2 + ||Q||^2
-                        e = e + (beta/2) * ( pow(P[i][k], 2) + pow(Q[k][j], 2) )
-        return e
-
-    def __print_fit_stats(self, error, samples_count, products_count):
-        print('training complete...')
-        print('------------------------------')
-        print('Stats:')
-        print('Error: %0.2f' % error)
-        print('Samples: ' + str(samples_count))
-        print('Products: ' + str(products_count))
-        print('------------------------------')
+                        error = error + \
+                            (self.regularization_penalty/2) * \
+                            (pow(USER_MATRIX[i][latent_feature], 2) +
+                             pow(EVENT_MATRIX[latent_feature][j], 2))
+        return error

@@ -4,22 +4,6 @@ import requests
 from typing import List
 import geocoder
 
-
-def is_similar_category(category, user_categories):
-    """ Check whether a given selected category is similar
-        to the ones the user selected.
-    """
-    similarities = [
-        ['bars', 'restaurants', 'cafes', 'nightclubs', 'live_music'],
-        ['museums', 'galleries']
-    ]
-    for user_category in user_categories:
-        for similarity in similarities:
-            if user_category in similarity and category in similarity:
-                return True
-    return False
-
-
 def get_current_location() -> dict:
     location = geocoder.ip('me').latlng
     return {'lat': location[0], 'lon': location[1]}
