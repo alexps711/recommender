@@ -4,7 +4,7 @@ import functools
 class memoized(object):
     """Decorator. Caches a function's return value each time it is called.
     If called later with the same arguments, the cached value is returned
-    (not reevaluated).
+    (not reevaluated). Disclaimer: this is a borrowed from the Python standard library that might be available in other sources online.
     """
     def __init__(self, func):
         self.func = func

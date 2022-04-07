@@ -154,6 +154,3 @@ def get_event(event_id):
     """
     return events[events.event_id == event_id]
 
-if __name__ == '__main__':
-    print("This is the API module")
-
